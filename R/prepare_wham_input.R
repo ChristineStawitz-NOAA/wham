@@ -219,18 +219,18 @@ prepare_wham_input <- function(asap3, recruit_model = 2, model_name = "WHAM for 
   obs <- rbind(obs, tmp[, obs.colnames])
 
   # 3. paa catch
-  # dimnames(data$catch_paa) <- list(fleet=paste0("fleet_", 1:data$n_fleets),
-  #                                  year=1:data$n_years_catch,
-  #                                  age=1:data$n_ages)
-  # x <- as.data.frame(dplyr::as.tbl_cube(data$catch_paa, met_name = "val"))
-  # x$type <- "paacatch"
-  # obs <- rbind(obs, x[, obs.colnames])
+  dimnames(data$catch_paa) <- list(fleet=paste0("fleet_", 1:data$n_fleets),
+                                    year=1:data$n_years_catch,
+                                    age=1:(data$n_ages-1))
+  x <- as.data.frame(dplyr::as.tbl_cube(data$catch_paa[,,1:(data$n_ages-1)], met_name = "val"))
+  x$type <- "paacatch"
+  obs <- rbind(obs, x[, obs.colnames])
 
   # # 4. paa index
   # dimnames(data$index_paa) <- list(fleet=paste0("index_", 1:data$n_indices),
   #                                  year=1:data$n_years_indices,
-  #                                  age=1:data$n_ages)
-  # x <- as.data.frame(dplyr::as.tbl_cube(data$index_paa, met_name = "val"))
+  #                                  age=1:(data$n_ages-1))
+  # x <- as.data.frame(dplyr::as.tbl_cube(data$index_paa[,,1:(data$n_ages-1)], met_name = "val"))
   # x$type <- "paaindex"
   # obs <- rbind(obs, x[, obs.colnames])
 
@@ -242,10 +242,10 @@ prepare_wham_input <- function(asap3, recruit_model = 2, model_name = "WHAM for 
   obs$ind <- 1:dim(obs)[1]
   data$keep_C <- matrix(subset(obs, type=='logcatch')$ind, nrow=data$n_years_catch, ncol=data$n_fleets, byrow=TRUE)
   data$keep_I <- matrix(subset(obs, type=='logindex')$ind, nrow=data$n_years_indices, ncol=data$n_indices, byrow=TRUE)
-  data$keep_Cpaa <- array(NA, dim=c(data$n_fleets, data$n_years_catch, data$n_ages))
-  for(i in 1:data$n_fleets) data$keep_Cpaa[i,,] <- matrix(subset(obs, type=='paacatch' & fleet==paste0("fleet_",i))$ind, nrow=data$n_years_catch, ncol=data$n_ages, byrow=TRUE)
-  data$keep_Ipaa <- array(NA, dim=c(data$n_indices, data$n_years_indices, data$n_ages))
-  for(i in 1:data$n_indices) data$keep_Ipaa[i,,] <- matrix(subset(obs, type=='paaindex' & fleet==paste0("index_",i))$ind, nrow=data$n_years_indices, ncol=data$n_ages, byrow=TRUE)
+  data$keep_Cpaa <- array(NA, dim=c(data$n_fleets, data$n_years_catch, data$n_ages-1))
+  for(i in 1:data$n_fleets) data$keep_Cpaa[i,,] <- matrix(subset(obs, type=='paacatch' & fleet==paste0("fleet_",i))$ind, nrow=data$n_years_catch, ncol=data$n_ages-1, byrow=TRUE)
+  data$keep_Ipaa <- array(NA, dim=c(data$n_indices, data$n_years_indices, data$n_ages-1))
+  for(i in 1:data$n_indices) data$keep_Ipaa[i,,] <- matrix(subset(obs, type=='paaindex' & fleet==paste0("index_",i))$ind, nrow=data$n_years_indices, ncol=data$n_ages-1, byrow=TRUE)
   # subtract 1 bc TMB indexes from 0
   data$keep_C <- data$keep_C - 1
   data$keep_I <- data$keep_I - 1

@@ -30,6 +30,48 @@ Type mydmultinom(vector<Type> obs, vector<Type> pred, int do_log)
 }
 
 template<class Type>
+Type mydmultinom(vector<Type> obs, Type N, vector<Type> pred, int do_log)
+{
+  //multinomial
+  //obs and pred should be length 1 less than the number of cells of the multinomial
+  int dim = obs.size();
+  Type obs_last = N - sum(obs);
+  Type pred_last = 1.0 - sum(pred);
+  Type ll = lgamma(N + 1.0);
+  for(int a = 0; a < dim; a++)
+  {
+    ll -= lgamma(obs(a) + 1.0);
+    if(obs(a)>0) ll += obs(a) * log(pred(a));
+  }
+  //last cell
+  ll += -lgamma(obs_last + 1.0) + (obs_last) * log(pred_last);
+  if(do_log == 1) return ll;
+  else return exp(ll);
+}
+
+template<class Type>
+Type mydmultinom(vector<Type> obs, Type N, vector<Type> pred, int do_log, vector<Type> keep)
+{
+  //multinomial
+  //keep marginal multinomial for OSA
+  //obs and pred should be length 1 less than the number of cells of the multinomial
+  int dim = obs.size();
+  vector<Type> not_keep = 1.0 - keep;
+  Type obs_last = N - sum(obs) + (not_keep * obs).sum();
+  Type pred_last = 1.0 - sum(pred) + (not_keep * pred).sum();
+  Type ll = lgamma(N + 1.0);
+  for(int a = 0; a < dim; a++)
+  {
+    ll -= keep(a) * lgamma(obs(a) + 1.0);
+    if(obs(a)>0) ll += keep(a) * obs(a) * log(pred(a));
+  }
+  //last cell
+  ll += -lgamma(obs_last + 1.0) + (obs_last) * log(pred_last);
+  if(do_log == 1) return ll;
+  else return exp(ll);
+}
+
+template<class Type>
 Type mydmultinom_osa(vector<Type> obs, vector<Type> pred, Type Neff, int do_log, vector<Type> t_keep)
 {
   //multinomial
@@ -96,12 +138,47 @@ vector<Type> rdirichlet(vector<Type> p, Type phi)
   obs = obs/obs.sum();
   return obs;
 }
-template <class Type>
+/*template <class Type>
 Type ddirichlet(vector<Type> obs, vector<Type>p, Type phi, int do_log)
 {
   int n = obs.size();
   Type ll = lgamma(phi);
   for(int i = 0; i < n; i++) ll +=  -lgamma(phi * p(i)) + (phi * p(i) - 1.0) * log(obs(i));
+  if(do_log == 1) return ll;
+  else return exp(ll);
+}
+*/
+template<class Type>
+Type ddirichlet(vector<Type> obs, vector<Type>p, Type phi, int do_log) 
+{
+  //obs and p should omit the last cell that are 1 - the sum of the other cells. i.e., sum(p)<=1.
+  int n = obs.size(); //n+1 cells for Dirichlet
+  vector<Type> alpha = phi * p; // sum(alpha) <=  phi
+  Type alpha_last = phi * (1.0 - sum(p));
+  Type obs_last = 1.0 - sum(obs);
+  Type ll = lgamma(phi);
+  for(int i = 0; i < n; i++) ll +=  -lgamma(alpha(i)) + (alpha(i) - 1.0) * log(obs(i));
+  //last cell
+  ll += -lgamma(alpha_last) + (alpha_last - 1.0) * log(obs_last);
+  if(do_log == 1) return ll;
+  else return exp(ll);
+}
+
+template<class Type>
+Type ddirichlet(vector<Type> obs, vector<Type>p, Type phi, int do_log, vector<Type> keep) 
+{
+  //gets marginal for keep cells
+  //obs and p should omit the last cell that are 1 - the sum of the other cells. i.e., sum(p)<=1.
+  //phi does not change for subvector
+  int n = obs.size(); //n+1 cells for Dirichlet
+  vector<Type> not_keep = 1.0 - keep;// n - nkeep
+  vector<Type> alpha = phi * p; // <=  phi
+  Type alpha_last = phi * (1.0 - sum(p)) + (not_keep * alpha).sum();
+  Type obs_last = 1.0 - sum(obs) + (not_keep * obs).sum();
+  Type ll = lgamma(phi);
+  for(int i = 0; i < n; i++) ll +=  keep(i)*(-lgamma(alpha(i)) + (alpha(i) - 1.0) * log(obs(i)));
+  //last cell
+  ll += -lgamma(alpha_last) + (alpha_last - 1.0) * log(obs_last);
   if(do_log == 1) return ll;
   else return exp(ll);
 }
@@ -127,7 +204,39 @@ Type ddirmultinom_osa(vector<Type> obs, vector<Type> p,  Type phi, int do_log, v
   if(do_log == 1) return ll;
   else return exp(ll);
 }
-//comment
+
+template<class Type>
+Type ddirmultinom(vector<Type> obs, Type N, vector<Type> p,  Type phi, int do_log)
+{
+  int dim = obs.size();
+  //obs and p should omit the last cell that are 1 - the sum of the other cells. i.e., sum(p)<=1.
+  Type obs_last = N - sum(obs);
+  vector<Type> alpha = phi * p;
+  Type alpha_last = phi * (1.0 - sum(p));
+  Type ll = lgamma(N + 1.0) + lgamma(phi) - lgamma(N + phi);
+  for(int a = 0; a < dim; a++) ll += -lgamma(obs(a) + 1.0) + lgamma(obs(a) + phi * p(a)) - lgamma(phi * p(a));
+  //last cell
+  ll += -lgamma(obs_last + 1.0) + lgamma(obs_last + alpha_last) - lgamma(alpha_last);
+  if(do_log == 1) return ll;
+  else return exp(ll);
+}
+template<class Type>
+Type ddirmultinom(vector<Type> obs, Type N, vector<Type> p,  Type phi, int do_log, vector<Type> keep)
+{
+  int dim = obs.size();
+  //obs and p should omit the last cell that are 1 - the sum of the other cells. i.e., sum(p)<=1.
+  vector<Type> not_keep = 1.0 - keep;// n - nkeep
+  Type obs_last = N - sum(obs) + (not_keep * obs).sum();
+  vector<Type> alpha = phi * p;
+  Type alpha_last = phi * (1.0 - sum(p)) + (not_keep * alpha).sum();
+  Type ll = lgamma(N + 1.0) + lgamma(phi) - lgamma(N + phi);
+  for(int a = 0; a < dim; a++) ll += keep(a) *(-lgamma(obs(a) + 1.0) + lgamma(obs(a) + phi * p(a)) - lgamma(phi * p(a)));
+  //last cell
+  ll += -lgamma(obs_last + 1.0) + lgamma(obs_last + alpha_last) - lgamma(alpha_last);
+  if(do_log == 1) return ll;
+  else return exp(ll);
+}
+
 template<class Type>
 vector<Type> rdirmultinom(Type N, vector<Type> p, Type phi) //dirichlet generated from iid gammas
 {
@@ -141,6 +250,52 @@ vector<Type> rdirmultinom(Type N, vector<Type> p, Type phi) //dirichlet generate
     obs = obs + rmultinom(Type(1),dp);
   }
   return(obs);
+}
+
+template<class Type>
+Type get_acomp_ll(int age_comp_model, Type Neff, vector<Type> paa_obs, vector<Type> paa_pred, vector<Type> age_comp_pars)
+{
+  Type ll = 0.0;
+  vector<Type> naa_obs = Neff * paa_obs;
+  if(age_comp_model == 1) //multinomial
+  {
+    ll = mydmultinom(naa_obs, Neff, paa_pred, 1);
+  }
+  if(age_comp_model == 2) //dirichlet-multinomial
+  { 
+    ll = ddirmultinom(naa_obs, Neff, paa_pred, exp(age_comp_pars(0)),1);
+  } 
+  if(age_comp_model == 3) //dirichlet
+  {
+    ll = ddirichlet(paa_obs, paa_pred, exp(age_comp_pars(0)), 1);
+  }
+  if(age_comp_model == 7) //logistic normal treating 0 observations as missing. One parameter.
+  {
+  }
+  return ll;
+}
+
+template<class Type>
+Type get_acomp_ll(int age_comp_model, Type Neff, vector<Type> paa_obs, vector<Type> paa_pred, vector<Type> age_comp_pars, vector<Type> keep)
+{
+  Type ll = 0.0;
+  vector<Type> naa_obs = Neff * paa_obs;
+  if(age_comp_model == 1) //multinomial
+  {
+    ll = mydmultinom(naa_obs, Neff, paa_pred, 1, keep);
+  }
+  if(age_comp_model == 2) //dirichlet-multinomial
+  { 
+    ll = ddirmultinom(naa_obs, Neff, paa_pred, exp(age_comp_pars(0)), 1, keep);
+  } 
+  if(age_comp_model == 3) //dirichlet
+  {
+    ll = ddirichlet(paa_obs, paa_pred, exp(age_comp_pars(0)), 1, keep);
+  }
+  if(age_comp_model == 7) //logistic normal treating 0 observations as missing. One parameter.
+  {
+  }
+  return ll;
 }
 
 template<class Type>

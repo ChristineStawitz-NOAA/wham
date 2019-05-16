@@ -115,8 +115,9 @@ Type objective_function<Type>::operator() ()
   array<Type> QAA(n_years_model,n_indices,n_ages);
   matrix<Type> selblocks(n_selblocks,n_ages);
   vector<Type> q(n_indices);
-  vector<Type> t_paa(n_ages);
-  vector<Type> t_pred_paa(n_ages);
+  vector<Type> t_paa(n_ages-1);
+  vector<Type> t_keep(n_ages-1);
+  vector<Type> t_pred_paa(n_ages-1);
   matrix<Type> selpars(n_selblocks,n_ages+6);
   //Type SR_a, SR_b, SR_R0, SR_h;
   for(int i = 0; i < n_selblocks; i++) for(int j = 0; j < n_ages + 6; j++)
@@ -443,20 +444,22 @@ Type objective_function<Type>::operator() ()
         if(use_catch_paa(y,f) == 1)
         {
           // vector<Type> t_keep(n_ages);
-          for(int a = 0; a < n_ages; a++)
+          for(int a = 0; a < n_ages - 1; a++)
           {
             pred_catch_paa(y,f,a) = pred_CAA(y,f,a)/tsum;
-            t_pred_paa(a) = pred_catch_paa(y,f,a);
-            t_paa(a) = catch_paa(f,y,a);
-            // t_paa(a) = obsvec(keep_Cpaa(f,y,a));
-            // t_keep(a) = keep(keep_Cpaa(f,y,a));
+            t_pred_paa(a) = pred_catch_paa(y,f,a); //vector dimension is n_ages - 1 
+            //t_paa(a) = catch_paa(f,y,a);
+            t_paa(a) = obsvec(keep_Cpaa(f,y,a)); //vector dimension is n_ages - 1
+            t_keep(a) = keep(keep_Cpaa(f,y,a)); //vector dimension is n_ages - 1
           }
-          nll_catch_acomp(y,f) -= get_acomp_ll(y, n_ages, catch_Neff(y,f), age_comp_model_fleets(f), t_paa, t_pred_paa, acomp_pars, catch_aref(y,f));
-          // nll_catch_acomp(y,f) -= get_acomp_ll_osa(y, n_ages, catch_Neff(y,f), age_comp_model_fleets(f), t_paa, t_pred_paa, acomp_pars, catch_aref(y,f), t_keep);
+          pred_catch_paa(y,f,n_ages-1) = pred_CAA(y,f,n_ages-1)/tsum; // get last age class
+          //nll_catch_acomp(y,f) -= get_acomp_ll(y, n_ages, catch_Neff(y,f), age_comp_model_fleets(f), t_paa, t_pred_paa, acomp_pars, catch_aref(y,f));
+          nll_catch_acomp(y,f) -= get_acomp_ll(age_comp_model_fleets(f), catch_Neff(y,f), t_paa, t_pred_paa, acomp_pars, t_keep);
           SIMULATE
           {
-            t_paa = sim_acomp(y, n_ages, catch_Neff(y,f), age_comp_model_fleets(f), t_paa, t_pred_paa, acomp_pars, catch_aref(y,f));
-            for(int a = 0; a < n_ages; a++) catch_paa(f,y,a) = t_paa(a);
+            vector<Type> sim_paa(n_ages);
+            sim_paa = sim_acomp(y, n_ages, catch_Neff(y,f), age_comp_model_fleets(f), t_paa, t_pred_paa, acomp_pars, catch_aref(y,f));
+            for(int a = 0; a < n_ages; a++) catch_paa(f,y,a) = sim_paa(a);
           }
         }
       }

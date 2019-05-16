@@ -2,6 +2,7 @@
 
 export(check_convergence)
 export(compare_wham_models)
+export(fit_tmb)
 export(fit_wham)
 export(mohns_rho)
 export(plot_wham_output)
