@@ -127,7 +127,7 @@ Type ddirmultinom_osa(vector<Type> obs, vector<Type> p,  Type phi, int do_log, v
   if(do_log == 1) return ll;
   else return exp(ll);
 }
-
+//comment
 template<class Type>
 vector<Type> rdirmultinom(Type N, vector<Type> p, Type phi) //dirichlet generated from iid gammas
 {
